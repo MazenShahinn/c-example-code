@@ -220,7 +220,12 @@ int handle_move(GameState* game, char** args) {
                 game->game_over = 1;
                 break;
             case REPORT:
-                printf("R (1,1,0,0)\n"); // TODO: Implement proper direction calculation
+                {
+                    // Calculate proper direction using Manhattan distance
+                    int north, south, east, west;
+                    calculate_report_direction(game, x, y, &north, &south, &east, &west);
+                    printf("R (%d,%d,%d,%d)\n", north, south, east, west);
+                }
                 // Switch players
                 game->current_player = (game->current_player == 1) ? 2 : 1;
                 break;
@@ -252,6 +257,51 @@ int handle_show(GameState* game, char** args) {
                game->cities[i].width, game->cities[i].height);
     }
     return 1;
+}
+
+// Calculate Manhattan distance between two points
+int manhattan_distance(int x1, int y1, int x2, int y2) {
+    int dx = x1 - x2;
+    int dy = y1 - y2;
+    return (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+}
+
+// Find closest enemy city and calculate direction
+void calculate_report_direction(GameState* game, int x, int y, int* north, int* south, int* east, int* west) {
+    int min_distance = INT_MAX;
+    int closest_city_x = 0, closest_city_y = 0;
+    
+    // Find closest enemy city
+    for (int i = 0; i < game->num_cities; i++) {
+        if (game->cities[i].player != game->current_player) {
+            // Check each district in the city
+            for (int cy = 0; cy < game->cities[i].height; cy++) {
+                for (int cx = 0; cx < game->cities[i].width; cx++) {
+                    if (game->cities[i].districts[cy][cx] == 0) { // Unoccupied district
+                        int city_world_x = game->cities[i].x + cx;
+                        int city_world_y = game->cities[i].y + cy;
+                        int distance = manhattan_distance(x, y, city_world_x, city_world_y);
+                        
+                        if (distance < min_distance) {
+                            min_distance = distance;
+                            closest_city_x = city_world_x;
+                            closest_city_y = city_world_y;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Calculate direction vectors (like A* heuristic)
+    int dx = closest_city_x - x;
+    int dy = closest_city_y - y;
+    
+    // Determine direction components
+    *north = (dy > 0) ? 1 : 0;  // Need to go north (positive Y)
+    *south = (dy < 0) ? 1 : 0;  // Need to go south (negative Y)
+    *east = (dx > 0) ? 1 : 0;   // Need to go east (positive X)
+    *west = (dx < 0) ? 1 : 0;   // Need to go west (negative X)
 }
 
 // Process salesperson move (following PoE2's make_move pattern)
