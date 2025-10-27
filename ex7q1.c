@@ -29,6 +29,22 @@ typedef struct {
     CommandHandler handler;
 } CommandEntry;
 
+int** allocate_2d_array(int rows, int cols);
+void free_2d_array(int** array, int rows);
+void init_game_state(GameState* game);
+void add_city(GameState* game, int x, int y, int width, int height, int player);
+void free_cities(GameState* game);
+int handle_p1_cities(GameState* game, char** args);
+int handle_p2_cities(GameState* game, char** args);
+int handle_move(GameState* game, char** args);
+int handle_forfeit(GameState* game, char** args);
+int handle_show(GameState* game, char** args);
+int calculate_heuristic(GameState* game);
+void calculate_report_direction(GameState* game, int x, int y, int* north, int* south, int* east, int* west);
+int process_salesperson_move(GameState* game, int x, int y);
+int process_command(GameState* game, char* input);
+void game_loop(GameState* game);
+
 int** allocate_2d_array(int rows, int cols) {
     int** array = (int**)malloc(rows * sizeof(int*));
     if (array == NULL) {
