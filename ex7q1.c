@@ -3,31 +3,27 @@
 #include <string.h>
 #include <limits.h>
 
-// City struct for representing a city in the game
 typedef struct {
-    int x, y;        // southwest corner coordinates
+    int x, y;
     int width, height;
-    int player;      // 1 or 2
-    int** districts; // 2D array to track occupied districts
+    int player;
+    int** districts;
 } City;
 
-// Game state structure (following PoE2 pattern)
 typedef struct {
-    int** game_grid;          // Like PoE2's self.board
-    City* cities;             // Array of cities
-    int num_cities;           // Number of cities
-    int current_player;       // Like PoE2's self.player (1 or 2)
-    int game_over;            // Game state tracking
-    int winner;               // Winner when game ends
+    int** game_grid;
+    City* cities;
+    int num_cities;
+    int current_player;
+    int game_over;
+    int winner;
     int grid_width, grid_height;
     int grid_offset_x, grid_offset_y;
-    int** salespeople;        // Track where salespeople are placed
+    int** salespeople;
 } GameState;
 
-// Command handler function pointer (following PoE2 pattern)
 typedef int (*CommandHandler)(GameState* game, char** args);
 
-// Command entry structure (following PoE2's command_dict pattern)
 typedef struct {
     char* command_name;
     CommandHandler handler;
@@ -59,20 +55,18 @@ void free_2d_array(int** array, int rows) {
     free(array);
 }
 
-// Game result constants (following PoE2 pattern)
 #define HIT 1
 #define MONOPOLIZED 2
 #define GAME_OVER 3
 #define REPORT 4
 #define FAIL 5
 
-// Initialize game state (following PoE2's __init__ pattern)
 void init_game_state(GameState* game) {
     game->game_grid = NULL;
     game->cities = NULL;
     game->num_cities = 0;
-    game->current_player = 1;        // Like PoE2's self.player = 1
-    game->game_over = 0;             // Game state tracking
+    game->current_player = 1;
+    game->game_over = 0;
     game->winner = 0;
     game->grid_width = 0;
     game->grid_height = 0;
@@ -81,22 +75,17 @@ void init_game_state(GameState* game) {
     game->salespeople = NULL;
 }
 
-// Function to add a city to the cities array
 void add_city(GameState* game, int x, int y, int width, int height, int player) {
-    // Reallocate cities array if needed
     game->cities = realloc(game->cities, sizeof(City) * (game->num_cities + 1));
     
-    // Add the new city
     game->cities[game->num_cities].x = x;
     game->cities[game->num_cities].y = y;
     game->cities[game->num_cities].width = width;
     game->cities[game->num_cities].height = height;
     game->cities[game->num_cities].player = player;
     
-    // Allocate 2D array for districts (0 = empty, 1 = occupied)
     game->cities[game->num_cities].districts = allocate_2d_array(height, width);
     
-    // Initialize all districts as empty (0)
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
             game->cities[game->num_cities].districts[i][j] = 0;
@@ -106,7 +95,6 @@ void add_city(GameState* game, int x, int y, int width, int height, int player) 
     game->num_cities++;
 }
 
-// Function to free all cities and their districts
 void free_cities(GameState* game) {
     for (int i = 0; i < game->num_cities; i++) {
         free_2d_array(game->cities[i].districts, game->cities[i].height);
@@ -117,7 +105,6 @@ void free_cities(GameState* game) {
     }
 }
 
-// Command handlers (following PoE2 pattern)
 int handle_p1_cities(GameState* game, char** args) {
     printf("P1:\n");
     char line[256];
@@ -130,7 +117,6 @@ int handle_p1_cities(GameState* game, char** args) {
         if (sscanf(line, "(%d,%d),%d,%d", &x, &y, &w, &h) == 4) {
             add_city(game, x, y, w, h, 1);
             
-            // Update bounding box
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             int rx = x + w;
@@ -140,7 +126,6 @@ int handle_p1_cities(GameState* game, char** args) {
         }
     }
     
-    // Store grid bounds
     game->grid_offset_x = minX;
     game->grid_offset_y = minY;
     game->grid_width = maxX - minX;
@@ -161,7 +146,6 @@ int handle_p2_cities(GameState* game, char** args) {
         if (sscanf(line, "(%d,%d),%d,%d", &x, &y, &w, &h) == 4) {
             add_city(game, x, y, w, h, 2);
             
-            // Update bounding box
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             int rx = x + w;
@@ -171,7 +155,6 @@ int handle_p2_cities(GameState* game, char** args) {
         }
     }
     
-    // Update grid bounds
     if (minX < game->grid_offset_x) game->grid_offset_x = minX;
     if (minY < game->grid_offset_y) game->grid_offset_y = minY;
     if (maxX > game->grid_offset_x + game->grid_width) 
@@ -179,15 +162,12 @@ int handle_p2_cities(GameState* game, char** args) {
     if (maxY > game->grid_offset_y + game->grid_height) 
         game->grid_height = maxY - game->grid_offset_y;
     
-    // Print grid bounds and initialize game
     printf("(%d, %d), %d, %d\n", game->grid_offset_x, game->grid_offset_y, 
            game->grid_width, game->grid_height);
     
-    // Allocate game grid and salespeople tracking
     game->game_grid = allocate_2d_array(game->grid_height, game->grid_width);
     game->salespeople = allocate_2d_array(game->grid_height, game->grid_width);
     
-    // Initialize grids
     for (int i = 0; i < game->grid_height; i++) {
         for (int j = 0; j < game->grid_width; j++) {
             game->game_grid[i][j] = 0;
@@ -209,11 +189,9 @@ int handle_move(GameState* game, char** args) {
         switch(result) {
             case HIT:
                 printf("H\n");
-                // Same player goes again
                 break;
             case MONOPOLIZED:
                 printf("M\n");
-                // Same player goes again
                 break;
             case GAME_OVER:
                 printf("G\n");
@@ -221,17 +199,14 @@ int handle_move(GameState* game, char** args) {
                 break;
             case REPORT:
                 {
-                    // Calculate proper direction using Manhattan distance
                     int north, south, east, west;
                     calculate_report_direction(game, x, y, &north, &south, &east, &west);
                     printf("R (%d,%d,%d,%d)\n", north, south, east, west);
                 }
-                // Switch players
                 game->current_player = (game->current_player == 1) ? 2 : 1;
                 break;
             case FAIL:
                 printf("F\n");
-                // Switch players
                 game->current_player = (game->current_player == 1) ? 2 : 1;
                 break;
         }
@@ -248,7 +223,6 @@ int handle_forfeit(GameState* game, char** args) {
 }
 
 int handle_show(GameState* game, char** args) {
-    // Print game state for debugging
     printf("Current player: %d\n", game->current_player);
     printf("Cities: %d\n", game->num_cities);
     for (int i = 0; i < game->num_cities; i++) {
@@ -259,16 +233,14 @@ int handle_show(GameState* game, char** args) {
     return 1;
 }
 
-// A* heuristic function (following the exact pattern from your example)
 int calculate_heuristic(GameState* game) {
     int diff = 0;
-    // Count unoccupied enemy districts (like counting different positions in A*)
     for (int i = 0; i < game->num_cities; i++) {
         if (game->cities[i].player != game->current_player) {
             for (int cy = 0; cy < game->cities[i].height; cy++) {
                 for (int cx = 0; cx < game->cities[i].width; cx++) {
                     if (game->cities[i].districts[cy][cx] == 0) {
-                        diff++; // Count unoccupied enemy districts
+                        diff++;
                     }
                 }
             }
@@ -277,21 +249,17 @@ int calculate_heuristic(GameState* game) {
     return diff;
 }
 
-// Find closest enemy city and calculate direction (following A* pattern)
 void calculate_report_direction(GameState* game, int x, int y, int* north, int* south, int* east, int* west) {
     int min_distance = INT_MAX;
     int closest_city_x = 0, closest_city_y = 0;
     
-    // Find closest enemy city (like A* finding closest target)
     for (int i = 0; i < game->num_cities; i++) {
         if (game->cities[i].player != game->current_player) {
-            // Check each district in the city
             for (int cy = 0; cy < game->cities[i].height; cy++) {
                 for (int cx = 0; cx < game->cities[i].width; cx++) {
-                    if (game->cities[i].districts[cy][cx] == 0) { // Unoccupied district
+                    if (game->cities[i].districts[cy][cx] == 0) {
                         int city_world_x = game->cities[i].x + cx;
                         int city_world_y = game->cities[i].y + cy;
-                        // Use Manhattan distance (like A* uses distance to goal)
                         int dx = x - city_world_x;
                         int dy = y - city_world_y;
                         int distance = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
@@ -307,59 +275,48 @@ void calculate_report_direction(GameState* game, int x, int y, int* north, int* 
         }
     }
     
-    // Calculate direction vectors (like A* direction to goal)
     int dx = closest_city_x - x;
     int dy = closest_city_y - y;
     
-    // Determine direction components (following A* movement pattern)
-    *north = (dy > 0) ? 1 : 0;  // Need to go north (positive Y)
-    *south = (dy < 0) ? 1 : 0;  // Need to go south (negative Y)
-    *east = (dx > 0) ? 1 : 0;   // Need to go east (positive X)
-    *west = (dx < 0) ? 1 : 0;   // Need to go west (negative X)
+    *north = (dy > 0) ? 1 : 0;
+    *south = (dy < 0) ? 1 : 0;
+    *east = (dx > 0) ? 1 : 0;
+    *west = (dx < 0) ? 1 : 0;
 }
 
-// Process salesperson move (following PoE2's make_move pattern)
 int process_salesperson_move(GameState* game, int x, int y) {
-    // Convert to grid coordinates
     int grid_x = x - game->grid_offset_x;
     int grid_y = y - game->grid_offset_y;
     
-    // Check bounds
     if (grid_x < 0 || grid_x >= game->grid_width || 
         grid_y < 0 || grid_y >= game->grid_height) {
-        return FAIL; // Out of bounds
+        return FAIL;
     }
     
-    // Check if already occupied by salesperson
     if (game->salespeople[grid_y][grid_x] != 0) {
-        return FAIL; // Already has salesperson
+        return FAIL;
     }
     
-    // Check if in own city
     for (int i = 0; i < game->num_cities; i++) {
         if (game->cities[i].player == game->current_player) {
             if (x >= game->cities[i].x && x < game->cities[i].x + game->cities[i].width &&
                 y >= game->cities[i].y && y < game->cities[i].y + game->cities[i].height) {
-                return FAIL; // Can't hit own city
+                return FAIL;
             }
         }
     }
     
-    // Check if hits enemy city
     for (int i = 0; i < game->num_cities; i++) {
         if (game->cities[i].player != game->current_player) {
             if (x >= game->cities[i].x && x < game->cities[i].x + game->cities[i].width &&
                 y >= game->cities[i].y && y < game->cities[i].y + game->cities[i].height) {
                 
-                // Place salesperson
                 game->salespeople[grid_y][grid_x] = game->current_player;
                 
-                // Mark district as occupied
                 int city_x = x - game->cities[i].x;
                 int city_y = y - game->cities[i].y;
                 game->cities[i].districts[city_y][city_x] = 1;
                 
-                // Check if city is fully monopolized
                 int fully_monopolized = 1;
                 for (int cy = 0; cy < game->cities[i].height; cy++) {
                     for (int cx = 0; cx < game->cities[i].width; cx++) {
@@ -372,7 +329,6 @@ int process_salesperson_move(GameState* game, int x, int y) {
                 }
                 
                 if (fully_monopolized) {
-                    // Check if this was the last enemy city
                     int enemy_cities_remaining = 0;
                     for (int j = 0; j < game->num_cities; j++) {
                         if (game->cities[j].player != game->current_player) {
@@ -394,24 +350,22 @@ int process_salesperson_move(GameState* game, int x, int y) {
                     }
                     
                     if (enemy_cities_remaining) {
-                        return MONOPOLIZED; // City monopolized, more cities remain
+                        return MONOPOLIZED;
                     } else {
                         game->winner = game->current_player;
-                        return GAME_OVER; // All enemy cities monopolized
+                        return GAME_OVER;
                     }
                 } else {
-                    return HIT; // Hit but city not fully monopolized
+                    return HIT;
                 }
             }
         }
     }
     
-    // Miss - place salesperson and report
     game->salespeople[grid_y][grid_x] = game->current_player;
     return REPORT;
 }
 
-// Process command (following PoE2's process_command pattern)
 int process_command(GameState* game, char* input) {
     char command[256];
     sscanf(input, "%s", command);
@@ -428,10 +382,9 @@ int process_command(GameState* game, char* input) {
         return handle_show(game, NULL);
     }
     
-    return 0; // Unknown command
+    return 0;
 }
 
-// Main game loop (following PoE2's main_loop pattern)
 void game_loop(GameState* game) {
     char input[256];
     
@@ -440,7 +393,6 @@ void game_loop(GameState* game) {
         fgets(input, sizeof(input), stdin);
         
         if (process_command(game, input)) {
-            // Command processed successfully
         }
     }
     
