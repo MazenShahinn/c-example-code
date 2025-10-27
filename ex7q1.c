@@ -38,7 +38,7 @@ static void read_player_and_update_bounds(const char* prompt,
         if (strncmp(line, "done", 4) == 0) break;
 
         int x, y, w, h;
-        if (sscanf(line, " ( %d , %d ) , %d , %d", &x, &y, &w, &h) == 4) {
+        if (sscanf(line, "(%d,%d),%d,%d", &x, &y, &w, &h) == 4) {
             if (x < *minX) *minX = x;
             if (y < *minY) *minY = y;
             int rx = x + w;  
