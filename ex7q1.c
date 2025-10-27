@@ -259,19 +259,30 @@ int handle_show(GameState* game, char** args) {
     return 1;
 }
 
-// Calculate Manhattan distance between two points
-int manhattan_distance(int x1, int y1, int x2, int y2) {
-    int dx = x1 - x2;
-    int dy = y1 - y2;
-    return (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
+// A* heuristic function (following the exact pattern from your example)
+int calculate_heuristic(GameState* game) {
+    int diff = 0;
+    // Count unoccupied enemy districts (like counting different positions in A*)
+    for (int i = 0; i < game->num_cities; i++) {
+        if (game->cities[i].player != game->current_player) {
+            for (int cy = 0; cy < game->cities[i].height; cy++) {
+                for (int cx = 0; cx < game->cities[i].width; cx++) {
+                    if (game->cities[i].districts[cy][cx] == 0) {
+                        diff++; // Count unoccupied enemy districts
+                    }
+                }
+            }
+        }
+    }
+    return diff;
 }
 
-// Find closest enemy city and calculate direction
+// Find closest enemy city and calculate direction (following A* pattern)
 void calculate_report_direction(GameState* game, int x, int y, int* north, int* south, int* east, int* west) {
     int min_distance = INT_MAX;
     int closest_city_x = 0, closest_city_y = 0;
     
-    // Find closest enemy city
+    // Find closest enemy city (like A* finding closest target)
     for (int i = 0; i < game->num_cities; i++) {
         if (game->cities[i].player != game->current_player) {
             // Check each district in the city
@@ -280,7 +291,10 @@ void calculate_report_direction(GameState* game, int x, int y, int* north, int* 
                     if (game->cities[i].districts[cy][cx] == 0) { // Unoccupied district
                         int city_world_x = game->cities[i].x + cx;
                         int city_world_y = game->cities[i].y + cy;
-                        int distance = manhattan_distance(x, y, city_world_x, city_world_y);
+                        // Use Manhattan distance (like A* uses distance to goal)
+                        int dx = x - city_world_x;
+                        int dy = y - city_world_y;
+                        int distance = (dx < 0 ? -dx : dx) + (dy < 0 ? -dy : dy);
                         
                         if (distance < min_distance) {
                             min_distance = distance;
@@ -293,11 +307,11 @@ void calculate_report_direction(GameState* game, int x, int y, int* north, int* 
         }
     }
     
-    // Calculate direction vectors (like A* heuristic)
+    // Calculate direction vectors (like A* direction to goal)
     int dx = closest_city_x - x;
     int dy = closest_city_y - y;
     
-    // Determine direction components
+    // Determine direction components (following A* movement pattern)
     *north = (dy > 0) ? 1 : 0;  // Need to go north (positive Y)
     *south = (dy < 0) ? 1 : 0;  // Need to go south (negative Y)
     *east = (dx > 0) ? 1 : 0;   // Need to go east (positive X)
