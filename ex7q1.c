@@ -400,14 +400,11 @@ void game_loop(GameState* game) {
 }
 
 int main(void) {
-    // Initialize game state (following PoE2's __init__ pattern)
     GameState game;
     init_game_state(&game);
     
-    // Start the game loop (following PoE2's main_loop pattern)
     game_loop(&game);
     
-    // Clean up memory (following PoE2's cleanup pattern)
     if (game.game_grid) {
         free_2d_array(game.game_grid, game.grid_height);
     }
